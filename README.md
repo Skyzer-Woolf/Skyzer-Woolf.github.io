@@ -21,10 +21,9 @@
     <p>Fursuiter • Conventions • France</p>
 
     <div class="links">
-        <a href="https://instagram.com/tonprofil">Instagram</a>
-        <a href="https://facebook.com/tonprofil">Facebook</a>
-        <a href="https://tiktok.com/@tonprofil">TikTok</a>
-        <a href="https://t.me/tonprofil">Telegram</a>
+        <a href="https://www.instagram.com/skyzer60/">Instagram</a>
+        <a href="https://www.facebook.com/skyzer.woolf.9/">Facebook</a>
+        <a href="https://t.me/skyzer60">Telegram</a>
     </div>
 
 </body>

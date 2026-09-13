@@ -16,7 +16,7 @@
 </head>
 <body>
 
-    <img src="ton_image.jpg" class="avatar">
+    <img src="https://raw.githubusercontent.com/Skyzer-Woolf/Skyzer-Woolf.github.io/f9880bcde8451c459757730ca01dd7712e327cb0/Image_Presentation.png" class="avatar">
     <h1>Skyzer</h1>
     <p>Fursuiter • Conventions • France</p>
 

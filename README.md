@@ -5,7 +5,7 @@
     <title>Skyzer – Liens & Réseaux</title>
     <style>
         body { background:#1a1a1a; color:#fff; font-family:Arial; text-align:center; padding:40px; }
-        .avatar { width:180px; height:180px; border-radius:50%; object-fit:cover; border:4px solid #4aa3ff; }
+        .avatar { width:200px; height:200px; border-radius:50%; object-fit:cover; border:4px solid #4aa3ff; }
         .links a {
             display:block; margin:12px auto; padding:12px 20px; width:220px;
             background:#4aa3ff; color:#000; text-decoration:none; border-radius:10px;

@@ -4,6 +4,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skyzer – Liens & Réseaux</title>
     <style>
+        html { color-scheme: only light; }
         body { background:#1a1a1a; color:#fff; font-family:Arial; text-align:center; padding:40px; }
         .avatar { width:200px; height:200px; border-radius:50%; object-fit:cover; border:4px solid #4aa3ff; }
         .links a {

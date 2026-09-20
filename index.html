@@ -1,26 +1,68 @@
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skyzer – Liens & Réseaux</title>
-
-	<link rel="stylesheet" href="style.css">
-   
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <img src="https://raw.githubusercontent.com/Skyzer-Woolf/Skyzer-Woolf.github.io/f9880bcde8451c459757730ca01dd7712e327cb0/Image_Presentation.png" class="avatar">
-    <h1>Skyzer</h1>
-    <p>Fursuiter • Conventions • France</p>
+    <div class="card-container" id="cardContainer">
+
+        <div class="card-circle" id="cardCircle">
+            <img id="circleImg"
+                 src="https://raw.githubusercontent.com/Skyzer-Woolf/Skyzer-Woolf.github.io/f9880bcde8451c459757730ca01dd7712e327cb0/Image_Presentation.png"
+                 class="avatar" alt="Avatar de Skyzer">
+        </div>
+
+        <div class="card-content">
+            <!-- Vue 1 : Présentation -->
+            <div class="view active" data-view="0">
+                <h1>Skyzer</h1>
+                <p>Fursuiter • Conventions • France</p>
+            </div>
+
+            <!-- Vue 2 : Boop -->
+            <div class="view" data-view="1">
+                <h1>Compteur de Boop 🐾</h1>
+                <p id="boopStatus">Tape l'avatar pour me booper !</p>
+
+                <div id="pseudoForm" class="pseudo-form">
+                    <input type="text" id="pseudoInput" placeholder="Ton pseudo" maxlength="20">
+                    <button id="pseudoSubmit">Valider</button>
+                </div>
+
+                <h2>Derniers boops</h2>
+                <table class="boop-table">
+                    <tbody id="lastBoopsBody"></tbody>
+                </table>
+
+                <h2>Top boopeurs</h2>
+                <table class="boop-table">
+                    <tbody id="topBoopersBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="dots">
+            <span class="dot active" data-target="0"></span>
+            <span class="dot" data-target="1"></span>
+        </div>
+        <p class="swipe-hint">‹ swipe pour changer ›</p>
+    </div>
 
     <div class="links">
-		<a href="instagram://user?username=skyzer60"
-			onclick="setTimeout(function(){ window.location='https://instagram.com/skyzer60'; }, 1000);">
-			Instagram
-		</a>
+        <a href="instagram://user?username=skyzer60"
+           onclick="setTimeout(function(){ window.location='https://instagram.com/skyzer60'; }, 1000);">
+            Instagram
+        </a>
         <a href="https://www.facebook.com/skyzer.woolf.9/">Facebook</a>
         <a href="https://t.me/skyzer60">Telegram</a>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

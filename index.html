@@ -12,11 +12,26 @@
 
     <div class="card-container" id="cardContainer">
 
+        <div class="swipe-guide" aria-label="Cliquer sur une icône pour changer de page">
+            <div class="swipe-guide-row">
+                <button class="swipe-guide-button" data-guide="0" type="button" aria-label="Afficher mes réseaux">
+                    <img class="swipe-guide-icon active" src="images/fiche-identite.svg" alt="" aria-hidden="true">
+                </button>
+                <img class="swipe-guide-hand target-right" id="swipeGuideHand" src="images/doigt-swipe.svg" alt="" aria-hidden="true">
+                <button class="swipe-guide-button" data-guide="1" type="button" aria-label="Afficher le compteur de boops">
+                    <img class="swipe-guide-icon" src="images/truffe.svg" alt="" aria-hidden="true">
+                </button>
+            </div>
+            <p class="swipe-guide-text target-right" id="swipeGuideText">Clique ici pour laisser une trace de ton passage</p>
+        </div>
+
         <div class="card-circle" id="cardCircle">
             <img id="circleImg"
                  src="https://raw.githubusercontent.com/Skyzer-Woolf/Skyzer-Woolf.github.io/f9880bcde8451c459757730ca01dd7712e327cb0/Image_Presentation.png"
                  class="avatar" alt="Avatar de Skyzer" draggable="false">
         </div>
+
+        <p class="boop-photo-instruction" id="boopPhotoInstruction">Touche la photo pour me boop et laisser une trace de ton passage</p>
 
         <div class="card-content">
             <!-- Vue 1 : Présentation -->
@@ -36,31 +51,33 @@
 
             <!-- Vue 2 : Boop -->
             <div class="view" data-view="1">
-                <h1>Compteur de Boop 🐾</h1>
-                <p id="boopStatus">Tape l'avatar pour me booper !</p>
-
                 <div id="pseudoForm" class="pseudo-form">
                     <input type="text" id="pseudoInput" placeholder="Ton pseudo" maxlength="20">
                     <button id="pseudoSubmit">Valider</button>
                 </div>
 
-                <h2>Derniers boops</h2>
-                <table class="boop-table">
-                    <tbody id="lastBoopsBody"></tbody>
-                </table>
+                <div class="boop-table-panel">
+                    <table class="boop-table">
+                        <caption>Derniers boops</caption>
+                        <thead>
+                            <tr><th scope="col">Pseudo</th></tr>
+                        </thead>
+                        <tbody id="lastBoopsBody"></tbody>
+                    </table>
+                </div>
 
-                <h2>Top boopeurs</h2>
-                <table class="boop-table">
-                    <tbody id="topBoopersBody"></tbody>
-                </table>
+                <div class="boop-table-panel">
+                    <table class="boop-table top-boopers-table">
+                        <caption>Top boopeurs</caption>
+                        <thead>
+                            <tr><th scope="col">Pseudo</th><th scope="col">Boops</th></tr>
+                        </thead>
+                        <tbody id="topBoopersBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <div class="dots">
-            <span class="dot active" data-target="0"></span>
-            <span class="dot" data-target="1"></span>
-        </div>
-        <p class="swipe-hint">‹ swipe pour changer ›</p>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>

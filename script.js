@@ -2,14 +2,40 @@
 // Références DOM
 // ==========================================================
 const cardCircle   = document.getElementById('cardCircle');
+const cardContainer = document.getElementById('cardContainer');
 const circleImg    = document.getElementById('circleImg');
 const views        = document.querySelectorAll('.view');
-const dots         = document.querySelectorAll('.dot');
 const pseudoForm   = document.getElementById('pseudoForm');
 const pseudoInput  = document.getElementById('pseudoInput');
 const pseudoSubmit = document.getElementById('pseudoSubmit');
+const guideButtons = document.querySelectorAll('.swipe-guide-button');
+const guideIcons   = document.querySelectorAll('.swipe-guide-button .swipe-guide-icon');
+const guideHand    = document.getElementById('swipeGuideHand');
+const guideText    = document.getElementById('swipeGuideText');
+const boopPhotoInstruction = document.getElementById('boopPhotoInstruction');
 
 let currentView = 0;
+
+guideButtons.forEach(button => {
+    button.addEventListener('click', () => goToView(Number(button.dataset.guide)));
+});
+
+function updateSwipeGuide(index) {
+    const targetIndex = index === 0 ? 1 : 0;
+    cardContainer.classList.toggle('boop-view-active', index === 1);
+    boopPhotoInstruction.classList.toggle('visible', index === 1);
+    guideIcons.forEach(icon => {
+        const guideButton = icon.closest('.swipe-guide-button');
+        icon.classList.toggle('active', guideButton.dataset.guide === String(index));
+    });
+    guideHand.classList.toggle('target-right', targetIndex === 1);
+    guideHand.classList.toggle('target-left', targetIndex === 0);
+    guideText.classList.toggle('target-right', targetIndex === 1);
+    guideText.classList.toggle('target-left', targetIndex === 0);
+    guideText.textContent = targetIndex === 1
+        ? 'Clique ici pour laisser une trace de ton passage'
+        : 'Clique ici pour avoir mes réseaux';
+}
 
 const presentationImg = "https://raw.githubusercontent.com/Skyzer-Woolf/Skyzer-Woolf.github.io/f9880bcde8451c459757730ca01dd7712e327cb0/Image_Presentation.png";
 const boopImg = "https://raw.githubusercontent.com/Skyzer-Woolf/Skyzer-Woolf.github.io/f9880bcde8451c459757730ca01dd7712e327cb0/Image_Presentation.png"; // à remplacer par ton image pour la vue "boop"
@@ -25,8 +51,7 @@ function goToView(index) {
         circleImg.src = index === 0 ? presentationImg : boopImg;
         views.forEach(v => v.classList.remove('active'));
         document.querySelector(`.view[data-view="${index}"]`).classList.add('active');
-        dots.forEach(d => d.classList.remove('active'));
-        document.querySelector(`.dot[data-target="${index}"]`).classList.add('active');
+        updateSwipeGuide(index);
         currentView = index;
     }, 150); // swap de l'image au milieu de l'animation
 
@@ -34,33 +59,13 @@ function goToView(index) {
 }
 
 // ==========================================================
-// Détection swipe / tap (pointer events = souris + tactile)
+// Clic sur l'image pour booper (le changement de page se fait avec les icônes)
 // ==========================================================
-let startX = 0, startY = 0, startTime = 0;
-
-cardCircle.addEventListener('pointerdown', e => {
-    startX = e.clientX;
-    startY = e.clientY;
-    startTime = Date.now();
-    cardCircle.setPointerCapture(e.pointerId); // garde les events sur cardCircle même si le doigt dévie
-});
-
-cardCircle.addEventListener('pointerup', e => {
-    const distX = e.clientX - startX;
-    const distY = e.clientY - startY;
-    const elapsed = Date.now() - startTime;
-
-    if (elapsed <= 500 && Math.abs(distX) >= 40 && Math.abs(distY) <= 60) {
-        // swipe détecté (gauche ou droite -> on bascule entre les deux vues)
-        goToView(currentView === 0 ? 1 : 0);
-    } else if (Math.abs(distX) < 10 && Math.abs(distY) < 10 && elapsed < 300) {
-        // tap détecté
-        handleTap();
-    }
-});
+cardCircle.addEventListener('click', handleTap);
 
 function handleTap() {
     if (currentView !== 1) return; // le tap ne boope que sur la vue "boop"
+    playBoopAnimation();
     const pseudo = getStoredPseudo();
     if (pseudo) {
         registerBoopTap(pseudo);
@@ -135,11 +140,11 @@ pseudoSubmit.addEventListener('click', () => {
 
 let pendingBoopCount = 0;
 let flushTimer = null;
+let boopAnimationTimer = null;
 const FLUSH_DELAY = 1200; // ms de pause après le dernier tap avant d'envoyer à Firebase
 
 function registerBoopTap(pseudo) {
     pendingBoopCount++;
-    playBoopAnimation(); // feedback immédiat, à CHAQUE tap, même rapproché
 
     clearTimeout(flushTimer);
     flushTimer = setTimeout(() => flushBoops(pseudo), FLUSH_DELAY);
@@ -149,6 +154,8 @@ function playBoopAnimation() {
     cardCircle.classList.remove('boop-pop');
     void cardCircle.offsetWidth; // force le navigateur à "relancer" l'animation même si elle tourne déjà
     cardCircle.classList.add('boop-pop');
+    clearTimeout(boopAnimationTimer);
+    boopAnimationTimer = setTimeout(() => cardCircle.classList.remove('boop-pop'), 200);
 }
 
 function flushBoops(pseudo) {

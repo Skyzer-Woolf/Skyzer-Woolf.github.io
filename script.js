@@ -5,14 +5,30 @@ const cardCircle   = document.getElementById('cardCircle');
 const cardContainer = document.getElementById('cardContainer');
 const circleImg    = document.getElementById('circleImg');
 const views        = document.querySelectorAll('.view');
+const pseudoDialog = document.getElementById('pseudoDialog');
 const pseudoForm   = document.getElementById('pseudoForm');
 const pseudoInput  = document.getElementById('pseudoInput');
-const pseudoSubmit = document.getElementById('pseudoSubmit');
+const pseudoCancel = document.getElementById('pseudoCancel');
 const guideButtons = document.querySelectorAll('.swipe-guide-button');
 const guideIcons   = document.querySelectorAll('.swipe-guide-button .swipe-guide-icon');
 const guideHand    = document.getElementById('swipeGuideHand');
 const guideText    = document.getElementById('swipeGuideText');
 const boopPhotoInstruction = document.getElementById('boopPhotoInstruction');
+const defaultBoopInstruction = boopPhotoInstruction.textContent;
+const boopThankYouMessages = [
+    '🐾 Merci pour ton boop !',
+    '💙 Merci pour ton passage !',
+    '🐺 Merci d\'avoir laissé une trace !',
+    '✨ Ton boop a bien été enregistré !',
+    '🐾 Museau touché avec succès !',
+    '💙 Skyzer apprécie cette attention !',
+    '📸 Ravi de t\'avoir rencontré !',
+    '🐾 Au plaisir de te recroiser en convention !',
+    '💙 Merci pour cette belle rencontre !',
+    '🐺 Heureux de t\'avoir croisé aujourd\'hui !'
+];
+let lastBoopThankYouIndex = -1;
+let boopThankYouTimer = null;
 
 let currentView = 0;
 
@@ -70,7 +86,7 @@ function handleTap() {
     if (pseudo) {
         registerBoopTap(pseudo);
     } else {
-        pseudoForm.style.display = 'flex';
+        if (!pseudoDialog.open) pseudoDialog.showModal();
     }
 }
 
@@ -83,6 +99,125 @@ function getStoredPseudo() {
 // le reste du script si la config pose problème)
 // ==========================================================
 let db = null;
+const boopTablePanel = document.getElementById('boopTablePanel');
+const boopTableLoading = document.getElementById('boopTableLoading');
+const boopTable = document.getElementById('boopTable');
+const boopTableCaption = document.getElementById('boopTableCaption');
+const boopTableHead = document.getElementById('boopTableHead');
+const boopTableBody = document.getElementById('boopTableBody');
+const lastBoopsTab = document.getElementById('lastBoopsTab');
+const topBoopersTab = document.getElementById('topBoopersTab');
+const boopTables = { recent: [], top: [] };
+let activeBoopTable = 'recent';
+let pendingBoopDisplay = null;
+let lastBoopsSnapshotReady = false;
+let boopLoadingTimer = null;
+
+function setBoopLoading(isLoading, pseudo = null) {
+    pendingBoopDisplay = isLoading ? pseudo : null;
+    boopTablePanel.classList.toggle('is-loading', isLoading);
+    boopTablePanel.setAttribute('aria-busy', String(isLoading));
+    boopTableLoading.hidden = !isLoading;
+
+    clearTimeout(boopLoadingTimer);
+    if (isLoading) {
+        boopLoadingTimer = setTimeout(() => setBoopLoading(false), 12000);
+    }
+}
+
+function renderBoopTable() {
+    const isRecent = activeBoopTable === 'recent';
+    const headers = isRecent ? ['Pseudo', ''] : ['Pseudo', 'Boops'];
+    const records = boopTables[activeBoopTable];
+    const headerRow = document.createElement('tr');
+
+    boopTableCaption.textContent = isRecent ? 'Derniers boops' : 'Top boopeurs';
+    headers.forEach(label => {
+        const cell = document.createElement('th');
+        cell.scope = 'col';
+        cell.textContent = label;
+        headerRow.appendChild(cell);
+    });
+    boopTableHead.replaceChildren(headerRow);
+    boopTableBody.replaceChildren();
+    boopTable.classList.toggle('last-boops-table', isRecent);
+    boopTable.classList.toggle('top-boopers-table', !isRecent);
+
+    records.forEach(data => {
+        const row = document.createElement('tr');
+        const pseudoCell = document.createElement('td');
+        pseudoCell.textContent = data.pseudo;
+        row.appendChild(pseudoCell);
+
+        const detailCell = document.createElement('td');
+        if (isRecent) {
+            detailCell.appendChild(createBoopAge(data.lastBoopAt));
+        } else {
+            detailCell.textContent = data.count;
+        }
+        row.appendChild(detailCell);
+        boopTableBody.appendChild(row);
+    });
+}
+
+function selectBoopTable(table) {
+    activeBoopTable = table;
+    lastBoopsTab.classList.toggle('active', table === 'recent');
+    lastBoopsTab.setAttribute('aria-pressed', String(table === 'recent'));
+    topBoopersTab.classList.toggle('active', table === 'top');
+    topBoopersTab.setAttribute('aria-pressed', String(table === 'top'));
+    renderBoopTable();
+}
+
+lastBoopsTab.addEventListener('click', () => selectBoopTable('recent'));
+topBoopersTab.addEventListener('click', () => selectBoopTable('top'));
+
+const relativeBoopTime = new Intl.RelativeTimeFormat('fr-FR', { numeric: 'auto', style: 'short' });
+
+function timestampToDate(timestamp) {
+    if (timestamp && typeof timestamp.toDate === 'function') return timestamp.toDate();
+    if (timestamp instanceof Date) return timestamp;
+    if (typeof timestamp === 'number') return new Date(timestamp);
+    return null;
+}
+
+function formatRelativeBoopTime(timestamp) {
+    const elapsedSeconds = (timestamp - Date.now()) / 1000;
+    const elapsed = Math.abs(elapsedSeconds);
+    const units = [
+        ['year', 31536000],
+        ['month', 2592000],
+        ['day', 86400],
+        ['hour', 3600],
+        ['minute', 60],
+        ['second', 1]
+    ];
+    const [unit, secondsPerUnit] = units.find(([, seconds]) => elapsed >= seconds) || units.at(-1);
+    return relativeBoopTime.format(Math.round(elapsedSeconds / secondsPerUnit), unit);
+}
+
+function createBoopAge(timestamp) {
+    const time = document.createElement('time');
+    time.className = 'boop-age';
+    const date = timestampToDate(timestamp);
+
+    if (!date || Number.isNaN(date.getTime())) {
+        time.textContent = 'À l’instant';
+        return time;
+    }
+
+    time.dateTime = date.toISOString();
+    time.dataset.timestamp = String(date.getTime());
+    time.title = date.toLocaleString('fr-FR');
+    time.textContent = formatRelativeBoopTime(date.getTime());
+    return time;
+}
+
+function refreshRelativeBoopTimes() {
+    document.querySelectorAll('.boop-age[data-timestamp]').forEach(time => {
+        time.textContent = formatRelativeBoopTime(Number(time.dataset.timestamp));
+    });
+}
 
 try {
     const firebaseConfig = {
@@ -100,26 +235,23 @@ try {
     // Affichage temps réel des derniers boops (une seule ligne par personne, la plus récente en premier)
     db.collection('boopers').orderBy('lastBoopAt', 'desc').limit(5)
         .onSnapshot(snapshot => {
-            const tbody = document.getElementById('lastBoopsBody');
-            tbody.innerHTML = '';
-            snapshot.forEach(doc => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${escapeHtml(doc.data().pseudo)}</td>`;
-                tbody.appendChild(tr);
-            });
+            boopTables.recent = snapshot.docs.map(doc => doc.data());
+            if (activeBoopTable === 'recent') renderBoopTable();
+
+            const pendingBoopUpdated = lastBoopsSnapshotReady && pendingBoopDisplay
+                && snapshot.docChanges().some(change =>
+                    change.doc.data().pseudo === pendingBoopDisplay
+                    && (change.type === 'added' || change.type === 'modified')
+                );
+            lastBoopsSnapshotReady = true;
+            if (pendingBoopUpdated) setBoopLoading(false);
         });
 
     // Affichage temps réel du classement des meilleurs boopeurs
     db.collection('boopers').orderBy('count', 'desc').limit(5)
         .onSnapshot(snapshot => {
-            const tbody = document.getElementById('topBoopersBody');
-            tbody.innerHTML = '';
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${escapeHtml(data.pseudo)}</td><td>${data.count}</td>`;
-                tbody.appendChild(tr);
-            });
+            boopTables.top = snapshot.docs.map(doc => doc.data());
+            if (activeBoopTable === 'top') renderBoopTable();
         });
 
 } catch (err) {
@@ -130,13 +262,20 @@ try {
 // Boop (feedback instantané à chaque tap, écriture Firebase
 // regroupée une fois la rafale de taps terminée)
 // ==========================================================
-pseudoSubmit.addEventListener('click', () => {
+pseudoForm.addEventListener('submit', event => {
+    event.preventDefault();
     const val = pseudoInput.value.trim();
-    if (!val) return;
+    if (!val) {
+        pseudoInput.value = '';
+        pseudoInput.reportValidity();
+        return;
+    }
     localStorage.setItem('skyzer_pseudo', val);
-    pseudoForm.style.display = 'none';
+    pseudoDialog.close();
     registerBoopTap(val);
 });
+
+pseudoCancel.addEventListener('click', () => pseudoDialog.close());
 
 let pendingBoopCount = 0;
 let flushTimer = null;
@@ -145,9 +284,31 @@ const FLUSH_DELAY = 1200; // ms de pause après le dernier tap avant d'envoyer �
 
 function registerBoopTap(pseudo) {
     pendingBoopCount++;
+    showBoopThankYou();
+    setBoopLoading(true, pseudo);
 
     clearTimeout(flushTimer);
     flushTimer = setTimeout(() => flushBoops(pseudo), FLUSH_DELAY);
+}
+
+function showBoopThankYou() {
+    let messageIndex = Math.floor(Math.random() * boopThankYouMessages.length);
+    if (messageIndex === lastBoopThankYouIndex) {
+        messageIndex = (messageIndex + 1 + Math.floor(Math.random() * (boopThankYouMessages.length - 1)))
+            % boopThankYouMessages.length;
+    }
+
+    lastBoopThankYouIndex = messageIndex;
+    boopPhotoInstruction.textContent = boopThankYouMessages[messageIndex];
+    boopPhotoInstruction.classList.remove('message-pop');
+    void boopPhotoInstruction.offsetWidth;
+    boopPhotoInstruction.classList.add('message-pop');
+
+    clearTimeout(boopThankYouTimer);
+    boopThankYouTimer = setTimeout(() => {
+        boopPhotoInstruction.textContent = defaultBoopInstruction;
+        boopPhotoInstruction.classList.remove('message-pop');
+    }, 15000);
 }
 
 function playBoopAnimation() {
@@ -155,7 +316,7 @@ function playBoopAnimation() {
     void cardCircle.offsetWidth; // force le navigateur à "relancer" l'animation même si elle tourne déjà
     cardCircle.classList.add('boop-pop');
     clearTimeout(boopAnimationTimer);
-    boopAnimationTimer = setTimeout(() => cardCircle.classList.remove('boop-pop'), 200);
+    boopAnimationTimer = setTimeout(() => cardCircle.classList.remove('boop-pop'), 650);
 }
 
 function flushBoops(pseudo) {
@@ -168,6 +329,7 @@ function flushBoops(pseudo) {
 
     if (!db) {
         console.warn('Firebase non configuré : les boops ne sont pas enregistrés.');
+        setBoopLoading(false);
         return;
     }
 
@@ -194,14 +356,153 @@ function flushBoops(pseudo) {
                 lastBoopAt: firebase.firestore.FieldValue.serverTimestamp()
             });
         }
+    }).catch(err => {
+        console.error('Erreur lors de l’enregistrement du boop :', err);
+        setBoopLoading(false);
     });
 }
 
 // ==========================================================
-// Utilitaire
+// Trajectoires de pas du loup en arrière-plan
 // ==========================================================
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+function startPawTrailEffect() {
+    const pawLayer = document.getElementById('pawTrails');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const stepDelay = 220;
+    const appearanceDuration = 520;
+    const restingDuration = 2800;
+    const fadeDuration = 400;
+    let nextTrailTimer;
+    let removeTrailTimer;
+    let previousTrailCenter = null;
+
+    if (!pawLayer || reducedMotion.matches) return;
+
+    // Crée une trajectoire courbe, puis vérifie que chaque patte reste loin du contenu.
+    function findTrail(count) {
+        const pawSize = parseFloat(getComputedStyle(pawLayer).getPropertyValue('--paw-size')) || 26;
+        const stepSpacing = Math.min(pawSize * 1.55, 52);
+        const sideOffset = pawSize * 0.25;
+        const protectedElements = cardContainer.querySelectorAll('h1, p, a, button, input, img, table');
+        const protectedRects = Array.from(protectedElements)
+            .filter(element => element.getClientRects().length > 0)
+            .map(element => {
+                const rect = element.getBoundingClientRect();
+                return { left: rect.left - 6, top: rect.top - 6, right: rect.right + 6, bottom: rect.bottom + 6 };
+            });
+        const edgeMargin = pawSize;
+        const pawClearance = pawSize * 0.72 + 6;
+
+        for (let attempt = 0; attempt < 220; attempt++) {
+            let heading = Math.random() * Math.PI * 2;
+            const curve = (Math.random() - 0.5) * 0.045;
+            let pathX = 0;
+            let pathY = 0;
+            const points = [];
+
+            for (let index = 0; index < count; index++) {
+                if (index > 0) {
+                    heading += curve;
+                    pathX += Math.cos(heading) * stepSpacing;
+                    pathY += Math.sin(heading) * stepSpacing;
+                }
+
+                const side = index % 2 === 0 ? -1 : 1;
+                const perpendicular = heading + Math.PI / 2;
+                points.push({
+                    x: pathX + Math.cos(perpendicular) * side * sideOffset,
+                    y: pathY + Math.sin(perpendicular) * side * sideOffset,
+                    rotation: `${heading * 180 / Math.PI + 90 + side * 3}deg`
+                });
+            }
+
+            const minX = Math.min(...points.map(point => point.x));
+            const maxX = Math.max(...points.map(point => point.x));
+            const minY = Math.min(...points.map(point => point.y));
+            const maxY = Math.max(...points.map(point => point.y));
+            const minLeft = edgeMargin - minX;
+            const maxLeft = window.innerWidth - edgeMargin - maxX;
+            const minTop = edgeMargin - minY;
+            const maxTop = window.innerHeight - edgeMargin - maxY;
+
+            if (minLeft > maxLeft || minTop > maxTop) continue;
+
+            const left = minLeft + Math.random() * (maxLeft - minLeft);
+            const top = minTop + Math.random() * (maxTop - minTop);
+            const placedPoints = points.map(point => ({ ...point, x: left + point.x, y: top + point.y }));
+            const center = placedPoints.reduce((result, point) => ({ x: result.x + point.x / count, y: result.y + point.y / count }), { x: 0, y: 0 });
+            const minimumTravel = Math.min(360, Math.hypot(window.innerWidth, window.innerHeight) * 0.3);
+            if (previousTrailCenter && Math.hypot(center.x - previousTrailCenter.x, center.y - previousTrailCenter.y) < minimumTravel) {
+                continue;
+            }
+
+            const overlapsContent = placedPoints.some(point => protectedRects.some(rect =>
+                point.x - pawClearance < rect.right && point.x + pawClearance > rect.left &&
+                point.y - pawClearance < rect.bottom && point.y + pawClearance > rect.top
+            ));
+
+            if (!overlapsContent) return { points: placedPoints, center };
+        }
+
+        return null;
+    }
+
+    // Une seule série existe à la fois; ses pas sont ajoutés dans l'ordre de marche.
+    function createTrail() {
+        const count = 4 + Math.floor(Math.random() * 7);
+        const placement = findTrail(count);
+        if (!placement) return false;
+        previousTrailCenter = placement.center;
+
+        const trail = document.createElement('div');
+        trail.className = 'paw-trail';
+
+        placement.points.forEach((point, index) => {
+            const paw = document.createElement('span');
+            paw.className = 'paw-print';
+            paw.style.left = `${point.x}px`;
+            paw.style.top = `${point.y}px`;
+            paw.style.setProperty('--paw-rotation', point.rotation);
+            paw.style.setProperty('--paw-opacity', `${0.1 + Math.random() * 0.08}`);
+            paw.style.setProperty('--step-delay', `${index * stepDelay}ms`);
+            paw.style.setProperty('--fade-delay', `${index * fadeDuration}ms`);
+            trail.appendChild(paw);
+        });
+
+        pawLayer.appendChild(trail);
+        const trailDuration = (count - 1) * stepDelay + appearanceDuration + restingDuration;
+        removeTrailTimer = setTimeout(() => {
+            trail.classList.add('is-fading');
+            removeTrailTimer = setTimeout(() => {
+                trail.remove();
+                scheduleNextTrail(0);
+            }, count * fadeDuration);
+        }, trailDuration);
+
+        return true;
+    }
+
+    function scheduleNextTrail(delay = 1200) {
+        clearTimeout(nextTrailTimer);
+        if (document.hidden || reducedMotion.matches) return;
+        nextTrailTimer = setTimeout(() => {
+            if (!createTrail()) scheduleNextTrail(100);
+        }, delay);
+    }
+
+    // Met en pause le décor dans les onglets cachés et respecte la réduction des animations.
+    function resetTrailEffect() {
+        clearTimeout(nextTrailTimer);
+        clearTimeout(removeTrailTimer);
+        pawLayer.replaceChildren();
+        if (!document.hidden && !reducedMotion.matches) scheduleNextTrail();
+    }
+
+    document.addEventListener('visibilitychange', resetTrailEffect);
+    reducedMotion.addEventListener?.('change', resetTrailEffect);
+    scheduleNextTrail();
 }
+
+startPawTrailEffect();
+
+setInterval(refreshRelativeBoopTimes, 60000);

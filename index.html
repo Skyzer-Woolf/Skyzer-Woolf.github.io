@@ -10,6 +10,9 @@
 </head>
 <body>
 
+    <!-- Couche décorative unique pour la trajectoire, derrière le contenu et sans interaction. -->
+    <div class="paw-trails" id="pawTrails" aria-hidden="true"></div>
+
     <div class="card-container" id="cardContainer">
 
         <div class="swipe-guide" aria-label="Cliquer sur une icône pour changer de page">
@@ -29,6 +32,12 @@
             <img id="circleImg"
                  src="https://raw.githubusercontent.com/Skyzer-Woolf/Skyzer-Woolf.github.io/f9880bcde8451c459757730ca01dd7712e327cb0/Image_Presentation.png"
                  class="avatar" alt="Avatar de Skyzer" draggable="false">
+            <svg class="boop-rays" viewBox="0 0 260 220" aria-hidden="true">
+                <g fill="none" stroke="#6aa5ff" stroke-linecap="round" stroke-width="3">
+                    <path d="M38 57 21 48M30 110H8M38 163l-17 9" />
+                    <path d="m222 57 17-9M230 110h22m-30 53 17 9" />
+                </g>
+            </svg>
         </div>
 
         <p class="boop-photo-instruction" id="boopPhotoInstruction">Touche la photo pour me boop et laisser une trace de ton passage</p>
@@ -37,7 +46,7 @@
             <!-- Vue 1 : Présentation -->
             <div class="view active" data-view="0">
                 <h1>Skyzer</h1>
-                <p>Fursuiter • Conventions • France</p>
+                <p class="presentation-message">Merci d'avoir scanné mon badge ! 🐺💙<br><br>📸 Photos bienvenues<br>🤗 Câlins et boops acceptés</p>
 
                 <div class="links">
                     <a href="instagram://user?username=skyzer60"
@@ -51,34 +60,41 @@
 
             <!-- Vue 2 : Boop -->
             <div class="view" data-view="1">
-                <div id="pseudoForm" class="pseudo-form">
-                    <input type="text" id="pseudoInput" placeholder="Ton pseudo" maxlength="20">
-                    <button id="pseudoSubmit">Valider</button>
+                <div class="boop-table-switch" aria-label="Choisir le tableau">
+                    <button class="boop-table-switch-button active" id="lastBoopsTab" type="button" aria-pressed="true">Derniers boops</button>
+                    <button class="boop-table-switch-button" id="topBoopersTab" type="button" aria-pressed="false">Top boopeurs</button>
                 </div>
 
-                <div class="boop-table-panel">
-                    <table class="boop-table">
-                        <caption>Derniers boops</caption>
-                        <thead>
-                            <tr><th scope="col">Pseudo</th></tr>
+                <div class="boop-table-panel" id="boopTablePanel" aria-busy="false">
+                    <table class="boop-table last-boops-table" id="boopTable">
+                        <caption id="boopTableCaption">Derniers boops</caption>
+                        <thead id="boopTableHead">
+                            <tr><th scope="col">Pseudo</th><th scope="col">Depuis</th></tr>
                         </thead>
-                        <tbody id="lastBoopsBody"></tbody>
+                        <tbody id="boopTableBody"></tbody>
                     </table>
-                </div>
-
-                <div class="boop-table-panel">
-                    <table class="boop-table top-boopers-table">
-                        <caption>Top boopeurs</caption>
-                        <thead>
-                            <tr><th scope="col">Pseudo</th><th scope="col">Boops</th></tr>
-                        </thead>
-                        <tbody id="topBoopersBody"></tbody>
-                    </table>
+                    <div class="boop-table-loading" id="boopTableLoading" role="status" hidden>
+                        <span class="boop-spinner" aria-hidden="true"></span>
+                        <span>Mise à jour des boops…</span>
+                    </div>
                 </div>
             </div>
         </div>
 
     </div>
+
+    <dialog class="pseudo-dialog" id="pseudoDialog" aria-labelledby="pseudoDialogTitle">
+        <h2 id="pseudoDialogTitle">Ton pseudo</h2>
+        <p>Choisis le pseudo qui apparaîtra dans le classement.</p>
+        <form id="pseudoForm" class="pseudo-form">
+            <label for="pseudoInput">Pseudo</label>
+            <input type="text" id="pseudoInput" placeholder="Ton pseudo" maxlength="20" autocomplete="nickname" required autofocus>
+            <div class="pseudo-form-actions">
+                <button type="submit">Valider</button>
+                <button id="pseudoCancel" class="cancel-button" type="button">Annuler</button>
+            </div>
+        </form>
+    </dialog>
 
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>

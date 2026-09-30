@@ -13,6 +13,7 @@ const guideButtons = document.querySelectorAll('.swipe-guide-button');
 const guideIcons   = document.querySelectorAll('.swipe-guide-button .swipe-guide-icon');
 const guideHand    = document.getElementById('swipeGuideHand');
 const guideText    = document.getElementById('swipeGuideText');
+const instagramLink = document.getElementById('instagramLink');
 const boopPhotoInstruction = document.getElementById('boopPhotoInstruction');
 const defaultBoopInstruction = boopPhotoInstruction.textContent;
 const boopThankYouMessages = [
@@ -31,6 +32,14 @@ let lastBoopThankYouIndex = -1;
 let boopThankYouTimer = null;
 
 let currentView = 0;
+
+instagramLink.addEventListener('click', event => {
+    if (!/Android/i.test(navigator.userAgent)) return;
+
+    event.preventDefault();
+    const fallbackUrl = encodeURIComponent(instagramLink.href);
+    window.location.href = `intent://instagram.com/_u/skyzer60/#Intent;package=com.instagram.android;scheme=https;S.browser_fallback_url=${fallbackUrl};end`;
+});
 
 guideButtons.forEach(button => {
     button.addEventListener('click', () => {

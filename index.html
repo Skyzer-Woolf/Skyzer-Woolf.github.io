@@ -30,7 +30,7 @@
 
         <div class="card-circle" id="cardCircle">
             <img id="circleImg"
-                 src="https://raw.githubusercontent.com/Skyzer-Woolf/Skyzer-Woolf.github.io/f9880bcde8451c459757730ca01dd7712e327cb0/Image_Presentation.png"
+                  src="images/Image_Presentation.jpg"
                  class="avatar" alt="Avatar de Skyzer" draggable="false">
             <svg class="boop-rays" viewBox="0 0 260 220" aria-hidden="true">
                 <g fill="none" stroke="#6aa5ff" stroke-linecap="round" stroke-width="3">
@@ -46,7 +46,7 @@
             <!-- Vue 1 : Présentation -->
             <div class="view active" data-view="0">
                 <h1>Skyzer</h1>
-                <p class="presentation-message">Merci d'avoir scanné mon badge ! 🐺💙<br><br>📸 Photos bienvenues<br>🤗 Câlins et boops acceptés</p>
+                <p class="presentation-message">Merci d'avoir scanné mon badge ! 🐺💙</p>
 
                 <div class="links">
                     <a href="instagram://user?username=skyzer60"
@@ -77,6 +77,10 @@
                         <span class="boop-spinner" aria-hidden="true"></span>
                         <span>Mise à jour des boops…</span>
                     </div>
+                </div>
+                <a class="boopers-list-link" id="boopersListLink" href="#boopersList" aria-expanded="false" aria-controls="boopersList">Voir tous les boopeurs</a>
+                <div class="boopers-list-panel" id="boopersList" hidden>
+                    <ul class="boopers-list" id="boopersListItems" aria-live="polite"></ul>
                 </div>
             </div>
         </div>

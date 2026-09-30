@@ -53,8 +53,8 @@ function updateSwipeGuide(index) {
         : 'Clique ici pour avoir mes réseaux';
 }
 
-const presentationImg = "https://raw.githubusercontent.com/Skyzer-Woolf/Skyzer-Woolf.github.io/f9880bcde8451c459757730ca01dd7712e327cb0/Image_Presentation.png";
-const boopImg = "https://raw.githubusercontent.com/Skyzer-Woolf/Skyzer-Woolf.github.io/f9880bcde8451c459757730ca01dd7712e327cb0/Image_Presentation.png"; // à remplacer par ton image pour la vue "boop"
+const presentationImg = "images/Image_Presentation.jpg";
+const boopImg = "images/Image_Presentation.jpg"; // à remplacer par ton image pour la vue "boop"
 
 // ==========================================================
 // Navigation swipe / flip (indépendant de Firebase)
@@ -82,6 +82,7 @@ cardCircle.addEventListener('click', handleTap);
 function handleTap() {
     if (currentView !== 1) return; // le tap ne boope que sur la vue "boop"
     playBoopAnimation();
+    if (typeof navigator.vibrate === 'function') navigator.vibrate(60);
     const pseudo = getStoredPseudo();
     if (pseudo) {
         registerBoopTap(pseudo);
@@ -107,11 +108,68 @@ const boopTableHead = document.getElementById('boopTableHead');
 const boopTableBody = document.getElementById('boopTableBody');
 const lastBoopsTab = document.getElementById('lastBoopsTab');
 const topBoopersTab = document.getElementById('topBoopersTab');
+const boopersListLink = document.getElementById('boopersListLink');
+const boopersListPanel = document.getElementById('boopersList');
+const boopersListItems = document.getElementById('boopersListItems');
 const boopTables = { recent: [], top: [] };
 let activeBoopTable = 'recent';
 let pendingBoopDisplay = null;
 let lastBoopsSnapshotReady = false;
 let boopLoadingTimer = null;
+let allBoopersUnsubscribe = null;
+
+function renderAllBoopers(snapshot) {
+    const pseudos = snapshot.docs
+        .map(doc => doc.data().pseudo)
+        .filter(pseudo => typeof pseudo === 'string' && pseudo.trim())
+        .sort((first, second) => first.localeCompare(second, 'fr', { sensitivity: 'base' }));
+
+    boopersListItems.replaceChildren();
+    if (pseudos.length === 0) {
+        const emptyItem = document.createElement('li');
+        emptyItem.textContent = 'Personne pour le moment.';
+        boopersListItems.appendChild(emptyItem);
+        return;
+    }
+
+    pseudos.forEach(pseudo => {
+        const item = document.createElement('li');
+        item.textContent = pseudo;
+        boopersListItems.appendChild(item);
+    });
+}
+
+boopersListLink.addEventListener('click', event => {
+    event.preventDefault();
+    const isExpanded = boopersListLink.getAttribute('aria-expanded') === 'true';
+    boopersListLink.setAttribute('aria-expanded', String(!isExpanded));
+    boopersListPanel.hidden = isExpanded;
+    boopersListLink.textContent = isExpanded ? 'Voir tous les boopeurs' : 'Masquer la liste';
+
+    if (allBoopersUnsubscribe) {
+        allBoopersUnsubscribe();
+        allBoopersUnsubscribe = null;
+    }
+    if (isExpanded) return;
+
+    boopersListItems.replaceChildren();
+    const loadingItem = document.createElement('li');
+    loadingItem.textContent = 'Chargement…';
+    boopersListItems.appendChild(loadingItem);
+    if (!db) {
+        loadingItem.textContent = 'Liste indisponible pour le moment.';
+        return;
+    }
+
+    allBoopersUnsubscribe = db.collection('boopers').onSnapshot(renderAllBoopers, error => {
+        console.error('Erreur lors du chargement de la liste des boopeurs :', error);
+        boopersListItems.replaceChildren();
+        const errorItem = document.createElement('li');
+        errorItem.textContent = 'Liste indisponible pour le moment.';
+        boopersListItems.appendChild(errorItem);
+        allBoopersUnsubscribe = null;
+    });
+});
 
 function setBoopLoading(isLoading, pseudo = null) {
     pendingBoopDisplay = isLoading ? pseudo : null;
@@ -281,6 +339,7 @@ let pendingBoopCount = 0;
 let flushTimer = null;
 let boopAnimationTimer = null;
 const FLUSH_DELAY = 1200; // ms de pause après le dernier tap avant d'envoyer à Firebase
+const DAILY_BOOP_LIMIT = 10;
 
 function registerBoopTap(pseudo) {
     pendingBoopCount++;
@@ -311,6 +370,19 @@ function showBoopThankYou() {
     }, 15000);
 }
 
+function showBoopLimitMessage() {
+    boopPhotoInstruction.textContent = 'Tu as atteint la limite de 10 boops pour aujourd’hui.';
+    boopPhotoInstruction.classList.remove('message-pop');
+    void boopPhotoInstruction.offsetWidth;
+    boopPhotoInstruction.classList.add('message-pop');
+
+    clearTimeout(boopThankYouTimer);
+    boopThankYouTimer = setTimeout(() => {
+        boopPhotoInstruction.textContent = defaultBoopInstruction;
+        boopPhotoInstruction.classList.remove('message-pop');
+    }, 5000);
+}
+
 function playBoopAnimation() {
     cardCircle.classList.remove('boop-pop');
     void cardCircle.offsetWidth; // force le navigateur à "relancer" l'animation même si elle tourne déjà
@@ -333,29 +405,48 @@ function flushBoops(pseudo) {
         return;
     }
 
-    // Un seul log pour toute la "rafale" de taps
-    db.collection('boops').add({
-        pseudo: cleanPseudo,
-        count: countToSend,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Compteur + date du dernier boop pour cette personne
+    const now = new Date();
+    const dailyYear = now.getUTCFullYear();
+    const dailyMonth = now.getUTCMonth() + 1;
+    const dailyDay = now.getUTCDate();
     const booperRef = db.collection('boopers').doc(cleanPseudo);
+    const boopLogRef = db.collection('boops').doc();
+
     db.runTransaction(async (t) => {
         const doc = await t.get(booperRef);
-        if (!doc.exists) {
-            t.set(booperRef, {
-                pseudo: cleanPseudo,
-                count: countToSend,
-                lastBoopAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+        const data = doc.exists ? doc.data() : {};
+        const sameDay = data.dailyYear === dailyYear
+            && data.dailyMonth === dailyMonth
+            && data.dailyDay === dailyDay;
+        const dailyCount = sameDay ? Number(data.dailyCount) || 0 : 0;
+        const acceptedCount = Math.min(countToSend, Math.max(0, DAILY_BOOP_LIMIT - dailyCount));
+        if (acceptedCount === 0) return 0;
+
+        const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+        const updatedBooper = {
+            pseudo: cleanPseudo,
+            count: (Number(data.count) || 0) + acceptedCount,
+            dailyYear,
+            dailyMonth,
+            dailyDay,
+            dailyCount: dailyCount + acceptedCount,
+            lastBoopAt: timestamp
+        };
+
+        if (doc.exists) {
+            t.update(booperRef, updatedBooper);
         } else {
-            t.update(booperRef, {
-                count: doc.data().count + countToSend,
-                lastBoopAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            t.set(booperRef, updatedBooper);
         }
+        t.set(boopLogRef, {
+            pseudo: cleanPseudo,
+            count: acceptedCount,
+            timestamp
+        });
+        return acceptedCount;
+    }).then(acceptedCount => {
+        setBoopLoading(false);
+        if (acceptedCount < countToSend) showBoopLimitMessage();
     }).catch(err => {
         console.error('Erreur lors de l’enregistrement du boop :', err);
         setBoopLoading(false);

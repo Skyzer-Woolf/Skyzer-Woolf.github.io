@@ -33,7 +33,11 @@ let boopThankYouTimer = null;
 let currentView = 0;
 
 guideButtons.forEach(button => {
-    button.addEventListener('click', () => goToView(Number(button.dataset.guide)));
+    button.addEventListener('click', () => {
+        const index = Number(button.dataset.guide);
+        if (index === 1) loadFirebase();
+        goToView(index);
+    });
 });
 
 function updateSwipeGuide(index) {
@@ -53,9 +57,6 @@ function updateSwipeGuide(index) {
         : 'Clique ici pour avoir mes réseaux';
 }
 
-const presentationImg = "images/Image_Presentation.jpg";
-const boopImg = "images/Image_Presentation.jpg"; // à remplacer par ton image pour la vue "boop"
-
 // ==========================================================
 // Navigation swipe / flip (indépendant de Firebase)
 // ==========================================================
@@ -64,7 +65,6 @@ function goToView(index) {
     cardCircle.classList.add('flipping');
 
     setTimeout(() => {
-        circleImg.src = index === 0 ? presentationImg : boopImg;
         views.forEach(v => v.classList.remove('active'));
         document.querySelector(`.view[data-view="${index}"]`).classList.add('active');
         updateSwipeGuide(index);
@@ -100,6 +100,7 @@ function getStoredPseudo() {
 // le reste du script si la config pose problème)
 // ==========================================================
 let db = null;
+let firebasePromise = null;
 const boopTablePanel = document.getElementById('boopTablePanel');
 const boopTableLoading = document.getElementById('boopTableLoading');
 const boopTable = document.getElementById('boopTable');
@@ -139,7 +140,7 @@ function renderAllBoopers(snapshot) {
     });
 }
 
-boopersListLink.addEventListener('click', event => {
+boopersListLink.addEventListener('click', async event => {
     event.preventDefault();
     const isExpanded = boopersListLink.getAttribute('aria-expanded') === 'true';
     boopersListLink.setAttribute('aria-expanded', String(!isExpanded));
@@ -156,12 +157,13 @@ boopersListLink.addEventListener('click', event => {
     const loadingItem = document.createElement('li');
     loadingItem.textContent = 'Chargement…';
     boopersListItems.appendChild(loadingItem);
-    if (!db) {
+    const activeDb = db || await loadFirebase();
+    if (!activeDb) {
         loadingItem.textContent = 'Liste indisponible pour le moment.';
         return;
     }
 
-    allBoopersUnsubscribe = db.collection('boopers').onSnapshot(renderAllBoopers, error => {
+    allBoopersUnsubscribe = activeDb.collection('boopers').onSnapshot(renderAllBoopers, error => {
         console.error('Erreur lors du chargement de la liste des boopeurs :', error);
         boopersListItems.replaceChildren();
         const errorItem = document.createElement('li');
@@ -277,7 +279,7 @@ function refreshRelativeBoopTimes() {
     });
 }
 
-try {
+function initializeFirebase() {
     const firebaseConfig = {
         apiKey: "AIzaSyAHGeMyMgza1FsJ6fBbdXl2k6VZ_n_Z6dc",
         authDomain: "skyzez-boop.firebaseapp.com",
@@ -287,7 +289,7 @@ try {
         appId: "1:586663843005:web:7d372cc6d02c1729de13d4"
     };
 
-    firebase.initializeApp(firebaseConfig);
+    if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
 
     // Affichage temps réel des derniers boops (une seule ligne par personne, la plus récente en premier)
@@ -312,8 +314,40 @@ try {
             if (activeBoopTable === 'top') renderBoopTable();
         });
 
-} catch (err) {
-    console.error('Erreur Firebase (le swipe et le tap fonctionnent quand même) :', err);
+}
+
+function loadFirebaseScript(src) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error(`Impossible de charger ${src}`));
+        document.head.appendChild(script);
+    });
+}
+
+function loadFirebase() {
+    if (db) return Promise.resolve(db);
+    if (firebasePromise) return firebasePromise;
+
+    firebasePromise = loadFirebaseScript('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js')
+        .then(() => loadFirebaseScript('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js'))
+        .then(() => {
+            try {
+                initializeFirebase();
+                return db;
+            } catch (error) {
+                console.error('Erreur Firebase (le swipe et le tap fonctionnent quand même) :', error);
+                return null;
+            }
+        })
+        .catch(error => {
+            console.error('Erreur Firebase (le swipe et le tap fonctionnent quand même) :', error);
+            firebasePromise = null;
+            return null;
+        });
+
+    return firebasePromise;
 }
 
 // ==========================================================
@@ -391,7 +425,7 @@ function playBoopAnimation() {
     boopAnimationTimer = setTimeout(() => cardCircle.classList.remove('boop-pop'), 650);
 }
 
-function flushBoops(pseudo) {
+async function flushBoops(pseudo) {
     const countToSend = pendingBoopCount;
     pendingBoopCount = 0;
     if (countToSend === 0) return;
@@ -399,6 +433,7 @@ function flushBoops(pseudo) {
     const cleanPseudo = pseudo.trim().slice(0, 20);
     if (!cleanPseudo) return;
 
+    if (!db) db = await loadFirebase();
     if (!db) {
         console.warn('Firebase non configuré : les boops ne sont pas enregistrés.');
         setBoopLoading(false);

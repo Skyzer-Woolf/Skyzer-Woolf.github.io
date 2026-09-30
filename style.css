@@ -1,10 +1,10 @@
 html {
     color-scheme: only light;
-    background: #1a1a1a url("images/page-background.svg") repeat;
+    background: #1a1a1a;
 }
 
 body {
-    background: transparent;
+    background: #1a1a1a;
     color: #fff;
     font-family: Arial;
     text-align: center;
@@ -101,7 +101,7 @@ body::before {
     margin: 12px auto;
     padding: 12px 20px;
     width: 220px;
-    background: #4aa3ff url("images/button-background.svg") center / 100% 100% no-repeat;
+    background: #4aa3ff;
     color: #000;
     text-decoration: none;
     border-radius: 10px;
@@ -110,7 +110,7 @@ body::before {
 }
 
 .links a:hover {
-    background: #77c3ff url("images/button-background-hover.svg") center / 100% 100% no-repeat;
+    background: #77c3ff;
 }
 
 /* --- Carte swipeable --- */
